@@ -1,4 +1,4 @@
-name: Deploy Static Website to Lightsail (Debug)
+name: Deploy Static Website to Lightsail
 
 on:
   push:
@@ -12,19 +12,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug - show which secrets are set (safe)
-        run: |
-          echo "Host is set? ${{ secrets.SSH_HOST != '' }}"
-          echo "User is set? ${{ secrets.SSH_USER != '' }}"
-          echo "Key is set?  ${{ secrets.SSH_KEY  != '' }}"
+      - name: Upload files to temp folder on server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "./*"
+          target: "/home/ubuntu/site_upload"
 
-      - name: Debug - SSH connect test
+      - name: Move files to /var/www/mysite and reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            whoami
-            hostname
-            ls -la /var/www/mysite
+            set -e
+            sudo mkdir -p /var/www/mysite
+            sudo rm -rf /var/www/mysite/*
+            sudo cp -r /home/ubuntu/site_upload/* /var/www/mysite/
+            sudo chown -R www-data:www-data /var/www/mysite
+            sudo find /var/www/mysite -type d -exec chmod 755 {} \;
+            sudo find /var/www/mysite -type f -exec chmod 644 {} \;
+            sudo rm -rf /home/ubuntu/site_upload
+            sudo nginx -t
+            sudo systemctl reload nginx
