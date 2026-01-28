@@ -1,0 +1,30 @@
+name: Deploy Static Website to Lightsail (Debug)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Debug - show which secrets are set (safe)
+        run: |
+          echo "Host is set? ${{ secrets.SSH_HOST != '' }}"
+          echo "User is set? ${{ secrets.SSH_USER != '' }}"
+          echo "Key is set?  ${{ secrets.SSH_KEY  != '' }}"
+
+      - name: Debug - SSH connect test
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            whoami
+            hostname
+            ls -la /var/www/mysite
