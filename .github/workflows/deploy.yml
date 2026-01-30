@@ -12,38 +12,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Upload files to temp folder on server
+      - name: Upload website files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "./*"
-          target: "/home/ubuntu/site_upload"
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/var/www/mysite"
+          strip_components: 0
+          overwrite: true
 
-      - name: Move files to /var/www/mysite and reload nginx
+      - name: Fix permissions + Reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
-            sudo mkdir -p /var/www/mysite
-            sudo rm -rf /var/www/mysite/*
-            sudo cp -r /home/ubuntu/site_upload/* /var/www/mysite/
-            sudo chown -R www-data:www-data /var/www/mysite
-            sudo find /var/www/mysite -type d -exec chmod 755 {} \;
-            sudo find /var/www/mysite -type f -exec chmod 644 {} \;
-            sudo rm -rf /home/ubuntu/site_upload
+            sudo chown -R deploy:www-data /var/www/mysite
+            sudo chmod -R 755 /var/www/mysite
             sudo nginx -t
             sudo systemctl reload nginx
-            - name: Reload nginx
-  uses: appleboy/ssh-action@v1.0.3
-  with:
-    host: ${{ secrets.LIGHTSAIL_HOST }}
-    username: ${{ secrets.LIGHTSAIL_USER }}
-    key: ${{ secrets.SSH_PRIVATE_KEY }}
-    script:
-      sudo nginx -t
-      sudo systemctl reload nginx
