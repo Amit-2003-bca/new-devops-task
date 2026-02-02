@@ -1,4 +1,4 @@
-name: Deploy landing-page to Lightsail
+name: Deploy Website to Lightsail
 
 on:
   push:
@@ -8,28 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Show repo structure (DEBUG)
-        run: |
-          echo "Root folder:"
-          ls -la
-          echo "landing-page folder:"
-          ls -la landing-page
-
-      - name: Upload website files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          source: "landing-page/*"
-          target: "/var/www/site1"
-
-      - name: Verify on server & reload nginx
+      - name: Deploy via SSH (git pull + copy)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
@@ -37,10 +17,28 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             set -e
-            echo "Files now on server:"
-            ls -la /var/www/site1
+
+            # 1) Ensure repo exists on server
+            mkdir -p ~/deploy
+            cd ~/deploy
+
+            if [ ! -d "new-devops-task/.git" ]; then
+              git clone https://github.com/Amit-2003-bca/new-devops-task.git
+            fi
+
+            # 2) Pull latest code
+            cd new-devops-task
+            git fetch --all
+            git reset --hard origin/main
+
+            # 3) Deploy to Nginx folder (copy only site files)
+            sudo rm -rf /var/www/site1/*
+            sudo cp -r ./* /var/www/site1/
+
+            # 4) Fix permissions and reload nginx
             sudo chown -R www-data:www-data /var/www/site1
             sudo chmod -R 755 /var/www/site1
             sudo nginx -t
             sudo systemctl reload nginx
-            echo "✅ Deploy completed"
+
+            echo "✅ Deployed successfully"
