@@ -12,25 +12,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Upload website files to server
-        uses: appleboy/scp-action@v0.1.7
+      - name: Upload site to server (rsync over SSH)
+        uses: burnett01/rsync-deployments@7.0.2
         with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
-          target: "/var/www/mysite"
-          strip_components: 0
-          overwrite: true
+          switches: -avzr --delete --exclude=".git*" --exclude=".github"
+          path: ./
+          remote_path: /var/www/site1/
+          remote_host: ${{ secrets.LIGHTSAIL_HOST }}
+          remote_user: ${{ secrets.LIGHTSAIL_USER }}
+          remote_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
 
-      - name: Fix permissions + Reload nginx
+      - name: Reload Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
-            sudo chown -R deploy:www-data /var/www/mysite
-            sudo chmod -R 755 /var/www/mysite
             sudo nginx -t
             sudo systemctl reload nginx
+            echo "✅ Deployed successfully"
