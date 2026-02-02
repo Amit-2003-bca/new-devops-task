@@ -13,25 +13,22 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Upload website to server
-        uses: burnett01/rsync-deployments@7.0.2
+        uses: burnett01/rsync-deployments@8.1.0
         with:
           switches: -avzr --delete --exclude=".git*" --exclude=".github"
-          # ✅ if your site is in a folder, change this:
           path: ./
           remote_path: /var/www/site1/
           remote_host: ${{ secrets.LIGHTSAIL_HOST }}
           remote_user: ${{ secrets.LIGHTSAIL_USER }}
           remote_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
 
-      - name: Verify and reload Nginx
+      - name: Reload Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
-            set -e
-            ls -la /var/www/site1 | head -n 30
             sudo nginx -t
             sudo systemctl reload nginx
             echo "✅ Deploy done"
