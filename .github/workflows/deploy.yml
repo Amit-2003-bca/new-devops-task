@@ -1,4 +1,4 @@
-name: Deploy Static Website (landing-page) to Lightsail
+name: Deploy landing-page to Lightsail
 
 on:
   push:
@@ -12,18 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Upload landing-page to server
-        uses: burnett01/rsync-deployments@8.1.0
+      - name: Upload landing-page via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          switches: -avzr --delete --exclude=".git*" --exclude=".github"
-          # ✅ IMPORTANT: your site is inside landing-page
-          path: ./landing-page/
-          remote_path: /var/www/site1/
-          remote_host: ${{ secrets.LIGHTSAIL_HOST }}
-          remote_user: ${{ secrets.LIGHTSAIL_USER }}
-          remote_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          source: "landing-page/*"
+          target: "/var/www/site1"
 
-      - name: Reload Nginx
+      - name: Fix permissions and reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
@@ -31,6 +29,8 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             set -e
+            sudo chown -R ubuntu:ubuntu /var/www/site1
+            sudo chmod -R 755 /var/www/site1
             ls -la /var/www/site1 | head -n 30
             sudo nginx -t
             sudo systemctl reload nginx
